@@ -746,12 +746,8 @@
       },
       execute: ->(connection, input) {
 
-        params = {
-          "msisdn" => input["to"],
-          "countrycode" => input["countrycode"].to_country_alpha2
-          }
-
-        number = get("https://api.transmitsms.com/format-number.json",params)
+        number = get("https://api.transmitsms.com/format-number.json").
+          params( msisdn: input["to"], countrycode: input["countrycode"].to_country_alpha2)
 
         if number["number"].include?("isValid")
 
@@ -760,11 +756,11 @@
           put("https://frontapi.transmitsms.com/zapier/add-to-list.json",input)
 
         end
-        },
-        output_fields: ->(object_definitions) {
-          object_definitions['contact_fields']
-        }
       },
+      output_fields: ->(object_definitions) {
+        object_definitions['contact_fields']
+      }
+    },
     DeleteContact: {
       title: 'Delete Contact',
       description: "Delete a contact on a Burst SMS list.",
@@ -782,19 +778,15 @@
       },
       execute: ->(connection, input) {
 
-        params = {
-          "msisdn" => input["to"],
-          "countrycode" => input["countrycode"].to_country_alpha2
-          }
-
-        number = get("https://api.transmitsms.com/format-number.json",params)
+        number = get("https://api.transmitsms.com/format-number.json").
+          params(msisdn: input["to"], countrycode: input["countrycode"].to_country_alpha2)
 
         if number["number"].include?("isValid")
 
           params = {
             "list_id" => input["list_id"],
             "msisdn" => number["number"]["international"]
-            }
+          }
 
           put("https://frontapi.transmitsms.com/zapier/delete-from-list.json",params)
 
@@ -828,13 +820,8 @@
           ]
         },
        execute: ->(connection, input) {
-
-          params = {
-            "msisdn" => input["msisdn"],
-            "list_id" => input["list_id"]
-           }
-
-          get("https://api.transmitsms.com/get-contact.json",params)
+          get("https://api.transmitsms.com/get-contact.json").
+          params(msisdn: input["msisdn"], list_id: input["list_id"])
         },
       	output_fields: lambda do |object_definitions|
           object_definitions['contact_fields']
@@ -863,14 +850,8 @@
       type: :paging_desc,
 
       webhook_subscribe: lambda do |webhook_url, connection, input, recipe_id|
-
-        params = {
-          "number": input["virtual_number"],
-          "forward_url": webhook_url
-          }.to_param
-
-        get("https://api.transmitsms.com/edit-number-options.json",params)
-
+        get("https://api.transmitsms.com/edit-number-options.json").
+          params(number: input["virtual_number"], forward_url: webhook_url)
       end,
 
       webhook_notification: ->(input, payload) {
@@ -902,14 +883,8 @@
       type: :paging_desc,
 
       webhook_subscribe: lambda do |webhook_url, connection, input, recipe_id|
-
-        params = {
-          "list_id" => input["list_id"],
-          "url" => webhook_url
-          }
-
-        get("https://api.transmitsms.com/set-list-callback.json",params)
-
+        get("https://api.transmitsms.com/set-list-callback.json").
+          params(list_id: input["list_id"], url: webhook_url)
       end,
 
       webhook_notification: lambda do |input, payload|
@@ -928,9 +903,9 @@
         object_definitions['out_contact_fields']
       end
       },
-      GetSMSDeliveryStatus: {
-        title: 'Get SMS Delivery Status',
-        description: "Get SMS Delivery Status.",
+      DeliveryReportReceived: {
+        title: 'Delivery Report Received',
+        description: "Delivery Report Received.",
         input_fields: ->() {
             [
               {
@@ -949,13 +924,9 @@
             ]
         },
         poll: ->(connection, input) {
-            params = {
-                "message_id" => input["message_id"],
-                "msisdn" => input["msisdn"]
-            }
-
-            stats = get("https://api.transmitsms.com/get-sms-delivery-status.json",params)
-
+            stats = get("https://api.transmitsms.com/get-sms-delivery-status.json").
+              params(message_id: input["message_id"], msisdn: input["msisdn"])
+              
             {
                 events: stats,
                 next_poll: Time.now + 60,
@@ -1002,12 +973,13 @@
         dedup: lambda do |ticket|
             Time.now + 60
         end,
+
         output_fields: lambda do |object_definitions|
             object_definitions['sms_responses']
         end
-        }
+    }
     
-    },
+  },
   pick_lists: {
     numbers:->(connection) {
       vn = get("https://api.transmitsms.com/get-numbers.json",{
