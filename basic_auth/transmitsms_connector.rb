@@ -231,7 +231,7 @@
             }
         },
         # please refer to https://support.burstsms.com/hc/en-us/articles/203116337-HTTP-Callbacks
-        delivery_receipts: {
+        sms_notification: {
             fields: ->() {
                 [
                     {
@@ -243,7 +243,7 @@
                     {
                         name: 'mobile',
                         type: 'string',
-                        hint: 'Recipient’s mobile'
+                        hint: 'Senders mobile'
                     },
                     {
                         name: 'longcode',
@@ -251,13 +251,17 @@
                         hint: 'The number message was delivered to'
                     },
                     {
-                        name: 'datetime',
+                        name: 'datetime_entry',
                         type: 'string',
                         hint: 'Date/time of delivery. UTC.'
                     },
                     {
-                        name: 'status',
-                        hint: 'delivery status'
+                        name: 'response',
+                        hint: 'Message text'
+                    },
+                    {
+                        name: 'is_optout',
+                        hint: 'Opt-out flag. yes or no'
                     }
                 ]
             }
@@ -344,10 +348,29 @@
                     end
                 end
 
-                fields << { name: 'first_name', type: 'string' }
-                fields << { name: 'last_name', type: 'string' }
+                fields << { name: 'first_name', type: :string }
+                fields << { name: 'last_name', type: :string }
                 fields << { name: 'msisdn', type: :string }
                 fields << { name: 'list_id', type: :string }
+            }
+        },
+        new_contact_notification: {
+            fields: ->(connection, config_fields) {
+                if config_fields.blank?
+                fields = []
+                else 
+                    fields = get("https://api.transmitsms.com/get-list.json",{
+                        "list_id": config_fields["list_id"]
+                    })["fields"].map do |key, value|
+                        { name: key, type: 'string' }
+                    end
+                end
+                fields << { name: 'type', type: :string }
+                fields << { name: 'firstname', type: :string }
+                fields << { name: 'lastname', type: :string }
+                fields << { name: 'mobile', type: :string }
+                fields << { name: 'list_id', type: :string }
+                fields << { name: 'datetime_entry', type: :string }
             }
         },
         #please refer to https://support.burstsms.com/hc/en-us/articles/202064463-delete-from-list
@@ -407,6 +430,7 @@
                 ]
             }
         },
+        #please refer to response section of https://support.burstsms.com/hc/en-us/articles/360000158136-get-contact
         get_contact_response:{
             fields: ->(connection, config_fields) {
                 if config_fields.blank?
@@ -435,28 +459,30 @@
                 }               
             }
         },
+        #please refer to response section of https://support.burstsms.com/hc/en-us/articles/360000021816-get-sms-delivery-status
         delivery_report_response: {
             fields: ->() {
                 [
                 {
                     name: 'error', type: 'object',
-                    properties: [
-                    { name: 'code', type: 'string' },
-                    { name: 'description', type: 'string' }
-                    ]
+                      properties: [
+                        { name: 'code', type: 'string' },
+                        { name: 'description', type: 'string' }
+                      ]
                 },
                 {
                     name: 'stats', type: 'object',
-                    properties: [
-                    { name: 'message_id', type: 'string' },
-                    { name: 'mobile', type: 'string' },
-                    { name: 'datetime', type: 'string' },
-                    { name: 'status', type: 'string' }
-                    ]
+                      properties: [
+                        { name: 'message_id', type: 'string' },
+                        { name: 'mobile', type: 'string' },
+                        { name: 'datetime', type: 'string' },
+                        { name: 'status', type: 'string' }
+                      ]
                 }
                 ]
             }
         },
+        #please refer to response section of https://support.burstsms.com/hc/en-us/articles/202064243-get-sms-responses
         get_sms_response: {
             fields: ->() {
                 [
@@ -599,15 +625,6 @@
         DeleteContact: {
             title: 'Delete Contact',
             description: "Delete a contact on a Burst SMS list.",
-            config_fields: [
-                { 
-                    name: "list_id", 
-                    control_type: "select", 
-                    pick_list: "contactList",
-                    label: "Choose the List you want to delete the contact from",
-                    optional: false
-                }
-            ],
             input_fields: ->(object_definitions) {
                 object_definitions['delete_contact_to_list_request']
             },
@@ -694,7 +711,7 @@
                 Time.now
             },
             output_fields: ->(object_definitions){
-                object_definitions["delivery_receipts"]
+                object_definitions["sms_notification"]
             }
         },
         new_contact: {
@@ -715,16 +732,18 @@
                 params(list_id: input["list_id"], url: webhook_url)
             end,
             webhook_notification: lambda do |input, payload|
+              if(payload["type"] == "add")
                 payload
+              end
             end,
             webhook_unsubscribe: lambda do |webhook|
                 # work in progress will be delivered in later phases
             end,
-            dedup: ->(messages) {
-                Time.now
+            dedup: ->(contact) {
+              contact["mobile"]
             },
             output_fields: lambda do |object_definitions|
-                object_definitions['add_contact_to_list_response']
+                object_definitions['new_contact_notification']
             end
         },
         DeliveryReportReceived: {
@@ -752,15 +771,15 @@
                 params(message_id: input["message_id"], msisdn: input["msisdn"])
                 {
                     events: stats,
-                    next_poll: Time.now + 60,
-                    can_poll_more: stats["stats"]["status"] == "delivered"
+                    next_poll: Time.now + 600,
+                    can_poll_more: stats["stats"]["status"] != "delivered"
                 }
             },
-            dedup: lambda do |ticket|
-                Time.now + 60
+            dedup: lambda do |stats|
+              stats["stats"]["status"]
             end,
             output_fields: lambda do |object_definitions|
-                object_definitions['delivery_report_response']
+              object_definitions['delivery_report_response']
             end
         },
         GetSMSResponse: {
@@ -783,12 +802,12 @@
                 response = get("https://api.transmitsms.com/get-sms-responses.json",params)
                 {
                     events: response,
-                    next_poll: Time.now + 60,
+                    next_poll: Time.now + 600,
                     can_poll_more: true
                 }
             },
-            dedup: lambda do |ticket|
-                Time.now + 60
+            dedup: lambda do |response|
+              response["total"]
             end,
             output_fields: lambda do |object_definitions|
                 object_definitions['get_sms_response']
