@@ -458,23 +458,7 @@
           ]
         }         
       }
-    },
-    #please refer to response section of https://support.burstsms.com/hc/en-us/articles/202064243-get-responses
-    get_sms_response: {
-      fields: ->() {
-        [
-          { name: 'first_name', type: :string },
-          { name: 'last_name', type: :string, },
-          { name: 'msisdn', type: :string },
-          { name: 'longcode', type: :string },
-          { name: 'response', type: :string },
-          { name: 'message_id', type:  :string },
-          { name: 'received_at', type: :string },
-          { name: 'id', type: :string }
-        ]
-      }
-    },
-
+    }
   },
   actions: {
     FormatNumber: {
@@ -710,25 +694,6 @@
       },
       output_fields: lambda do |object_definitions|
         object_definitions['new_contact_notification']
-      end
-    },
-    GetSMSResponse: {
-      title: 'SMS Received to Inbox',
-      description: "Triggers when any new messages are found in your SMS Inbox.",
-      poll: ->(connection, input) { 
-        response = get("https://frontapi.transmitsms.com/zapier/get-responses.json")
-          .params(page: 1, max: 10)
-        {
-          events: response,
-          next_poll: Time.now + 600,
-          can_poll_more: true
-        }
-      },
-      dedup: lambda do |response|
-        response["id"]
-      end,
-      output_fields: lambda do |object_definitions|
-        object_definitions['get_sms_response']
       end
     }
     
