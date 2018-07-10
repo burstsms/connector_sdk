@@ -459,29 +459,6 @@
         }         
       }
     },
-    #please refer to response section of https://support.burstsms.com/hc/en-us/articles/360000021816-get-sms-delivery-status
-    delivery_report_response: {
-      fields: ->() {
-        [
-        {
-          name: 'error', type: 'object',
-            properties: [
-            { name: 'code', type: 'string' },
-            { name: 'description', type: 'string' }
-            ]
-        },
-        {
-          name: 'stats', type: 'object',
-            properties: [
-            { name: 'message_id', type: 'string' },
-            { name: 'mobile', type: 'string' },
-            { name: 'datetime', type: 'string' },
-            { name: 'status', type: 'string' }
-            ]
-        }
-        ]
-      }
-    },
     #please refer to response section of https://support.burstsms.com/hc/en-us/articles/202064243-get-responses
     get_sms_response: {
       fields: ->() {
@@ -733,42 +710,6 @@
       },
       output_fields: lambda do |object_definitions|
         object_definitions['new_contact_notification']
-      end
-    },
-    DeliveryReportReceived: {
-      title: 'Delivery Report Received',
-      description: "Delivery Report Received.",
-      input_fields: ->() {
-        [
-          {
-            name: 'message_id',
-            type: 'string',
-            label: "Message ID",
-            optional: false
-          },
-          {
-            name: 'msisdn',
-            type: 'mobile',
-            control_type: "phone",
-            label: "Recipient Mobile Number",
-            optional: false
-          }
-        ]
-      },
-      poll: ->(connection, input) {
-        stats = get("https://api.transmitsms.com/get-sms-delivery-status.json").
-        params(message_id: input["message_id"], msisdn: input["msisdn"])
-        {
-          events: stats,
-          next_poll: Time.now + 600,
-          can_poll_more: stats["stats"]["status"] != "delivered"
-        }
-      },
-      dedup: lambda do |stats|
-        stats["stats"]["status"]
-      end,
-      output_fields: lambda do |object_definitions|
-        object_definitions['delivery_report_response']
       end
     },
     GetSMSResponse: {
