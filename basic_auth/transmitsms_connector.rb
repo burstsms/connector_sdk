@@ -482,29 +482,18 @@
                 ]
             }
         },
-        #please refer to response section of https://support.burstsms.com/hc/en-us/articles/202064243-get-sms-responses
+        #please refer to response section of https://support.burstsms.com/hc/en-us/articles/202064243-get-responses
         get_sms_response: {
             fields: ->() {
                 [
-                    { name: 'page', type: 'object',
-                        properties: [
-                            { name: 'count', type: 'number' },
-                            { name: 'number', type: 'number' }
-                        ]
-                    },
-                    { name: 'total', type: 'number', },
-                    { name: 'responses', type: 'object',
-                        properties: [
-                            { name: 'id', type: 'string' },
-                            { name: 'list_id', type: 'string' },
-                            { name: 'message_id', type: 'string' },
-                            { name: 'received_at', type: 'string' },
-                            { name: 'first_name', type: 'string' },
-                            { name: 'last_name', type: 'string' },
-                            { name: 'msisdn', type: 'string' },
-                            { name: 'response', type: 'string' }
-                        ]
-                    }
+                    { name: 'first_name', type: :string },
+                    { name: 'last_name', type: :string, },
+                    { name: 'msisdn', type: :string },
+                    { name: 'longcode', type: :string },
+                    { name: 'response', type: :string },
+                    { name: 'message_id', type:  :string },
+                    { name: 'received_at', type: :string },
+                    { name: 'id', type: :string }
                 ]
             }
         },
@@ -784,22 +773,10 @@
         },
         GetSMSResponse: {
             title: 'SMS Received to Inbox',
-            description: "Get SMS Received to Inbox",
-            input_fields: ->() {
-                [
-                    {
-                        name: 'message_id',
-                        type: 'string',
-                        label: "Message ID",
-                        optional: false
-                    }
-                ]
-            },
-            poll: ->(connection, input) {
-                params = {
-                    "message_id" => input["message_id"]
-                }  
-                response = get("https://api.transmitsms.com/get-sms-responses.json",params)
+            description: "Triggers when any new messages are found in your SMS Inbox.",
+            poll: ->(connection, input) { 
+                response = get("https://frontapi.transmitsms.com/zapier/get-responses.json")
+                    .params(page: 1, max: 10)
                 {
                     events: response,
                     next_poll: Time.now + 600,
@@ -807,7 +784,7 @@
                 }
             },
             dedup: lambda do |response|
-              response["total"]
+              response["id"]
             end,
             output_fields: lambda do |object_definitions|
                 object_definitions['get_sms_response']
