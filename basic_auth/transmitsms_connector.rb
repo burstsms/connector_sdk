@@ -24,6 +24,9 @@
     }
     }
   },
+  test: ->(connection) {
+    get("https://api.transmitsms.com/get-balance.json")
+  },
   object_definitions: {
     # please refer to https://support.burstsms.com/hc/en-us/articles/202500828-send-sms
     format_number_request: {
