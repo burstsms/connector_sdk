@@ -347,7 +347,7 @@
           fields = get("https://api.transmitsms.com/get-list.json",{
             "list_id": config_fields["list_id"]
           })["fields"].map do |key, value|
-            { name: key, type: 'string' }
+            { name: value, type: 'string' }
           end
         end
 
@@ -359,13 +359,13 @@
     },
     new_contact_notification: {
       fields: ->(connection, config_fields) {
-        if config_fields.blank?
         fields = []
+        if config_fields.blank?
         else 
-          fields = get("https://api.transmitsms.com/get-list.json",{
+           get("https://api.transmitsms.com/get-list.json",{
             "list_id": config_fields["list_id"]
           })["fields"].map do |key, value|
-            { name: key, type: 'string' }
+            fields << { name: value, type: :string }
           end
         end
         fields << { name: 'type', type: :string }
@@ -702,7 +702,7 @@
       end,
       webhook_notification: lambda do |input, payload|
         if(payload["type"] == "add")
-        payload
+        	payload
         end
       end,
       webhook_unsubscribe: lambda do |webhook|
