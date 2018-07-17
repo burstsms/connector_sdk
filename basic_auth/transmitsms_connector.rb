@@ -671,12 +671,18 @@
       title: 'SMS Received to Inbox',
       description: "New <span class='provider'>SMS</span> received to inbox in <span class='provider'>transmitsms.com</span>",
       help: "Fetches new messages to inbox for all virtual numbers in the user's account.",
-      poll: ->(connection, input) { 
+      poll: ->(connection, input, page) { 
+        if(page.present?)
+          page++
+        else
+          page = 1;
+        end
         response = get("https://frontapi.transmitsms.com/zapier/get-responses.json")
-          .params(page: 1, max: 10)
+          .params(page: page, max: 10)
         {
           events: response["responses"],
-          can_poll_more: false
+          next_poll: page,
+          can_poll_more: response["responses"].length == 10 
         }
       },
       dedup: lambda do |response|
