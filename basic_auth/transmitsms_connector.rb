@@ -33,25 +33,19 @@
       fields: ->() {
         [
           {
-            name: 'to',
-            type: 'phone',
+            name: "to",
+            type: "integer",
             control_type: "phone",
             label: "Recipient Mobile Number",
             optional: false
             }, 
           {
-            name: 'countrycode',
+            name: "countrycode",
             control_type: :select,
             label: "Format Number",
             hint: 'Automatically formats numbers given to international format required for reliable SMS delivery. eg. In Australia 0422222222 will become 6142222222 when country code is set to AU.',
             optional: false,
-            pick_list: [
-              ["Australia", "AU"],
-              ["New Zealand", "NZ"],
-              ["United Kingdom", "GB"],
-              ["United States", "US"],
-              ["Singapore", "SG"]
-            ],
+            pick_list: "countryList",
             toggle_hint: "Select Country",
             toggle_field: {
               name: 'countrycode',
@@ -107,7 +101,7 @@
             },
           {
             name: 'to',
-            type: 'phone',
+            type: "integer",
             control_type: "phone",
             label: "Recipient Mobile Number",
             optional: false
@@ -118,13 +112,7 @@
             label: "Format Number",
             hint: 'Automatically formats numbers given to international format required for reliable SMS delivery. eg. In Australia 0422222222 will become 6142222222 when country code is set to AU.',
             optional: true,
-            pick_list: [
-              ["Australia", "AU"],
-              ["New Zealand", "NZ"],
-              ["United Kingdom", "GB"],
-              ["United States", "US"],
-              ["Singapore", "SG"]
-            ],
+            pick_list: "countryList",
             toggle_hint: "Select Country",
             toggle_field: {
               name: 'countrycode',
@@ -240,13 +228,18 @@
           {
             name: 'message_id',
             type: 'string',
-            hint: 'message unique indetifier',
+            hint: 'message unique identifier',
             optional: false
           },
           {
             name: 'mobile',
             type: 'string',
             hint: 'Senders mobile'
+          },
+          {
+            name: 'response_id',
+            type: 'string',
+            hint: 'response unique identifier'
           },
           {
             name: 'longcode',
@@ -281,9 +274,7 @@
             {
               name: key,
               type: 'string',
-              label: value,
-              hint: '',
-              optional: true
+              label: value
             }
           end
         end
@@ -291,22 +282,18 @@
         fields << {
           name: 'first_name',
           type: 'string',
-          label: "First Name",
-          hint: '',
-          optional: true
+          label: "First Name"
         }
 
         fields << {
           name: 'last_name',
           type: 'string',
-          label: "Last Name",
-          hint: '',
-          optional: true
+          label: "Last Name"
         }
 
         fields << {
           name: 'to',
-          type: 'phone',
+          type: "integer",
           control_type: "phone",
           label: "Recipient Mobile Number",
           optional: false
@@ -318,13 +305,7 @@
           label: "Country Code",
           hint: 'Automatically formats numbers given to international format required for reliable SMS delivery. eg. In Australia 0422222222 will become 6142222222 when country code is set to AU.',
           optional: false,
-          pick_list: [
-            ["Australia", "AU"],
-            ["New Zealand", "NZ"],
-            ["United Kingdom", "GB"],
-            ["United States", "US"],
-            ["Singapore", "SG"]
-          ],
+          pick_list: "countryList",
           toggle_hint: "Select Country",
           toggle_field: {
             name: 'countrycode',
@@ -384,12 +365,12 @@
             name: "list_id", 
             control_type: "select", 
             pick_list: "contactList",
-            label: "Choose the List you want to add/update the contact from",
+            label: "Choose the List you want to delete the contact from",
             optional: false
           },
           {
             name: 'to',
-            type: 'phone',
+            type: "integer",
             control_type: "phone",
             label: "Recipient Mobile Number",
             optional: false
@@ -400,13 +381,7 @@
             label: "Country Code",
             hint: 'Automatically formats numbers given to international format required for reliable SMS delivery. eg. In Australia 0422222222 will become 6142222222 when country code is set to AU.',
             optional: false,
-            pick_list: [
-              ["Australia", "AU"],
-              ["New Zealand", "NZ"],
-              ["United Kingdom", "GB"],
-              ["United States", "US"],
-              ["Singapore", "SG"]
-            ],
+            pick_list: "countryList",
             toggle_hint: "Select Country",
             toggle_field: {
               name: 'countrycode',
@@ -483,6 +458,7 @@
     FormatNumber: {
       title: 'Format Number',
       description: "Format a single mobile number.",
+      help: "Automatically formats numbers to international format.",
       input_fields: ->(object_definitions) {
         object_definitions['format_number_request']
       },
@@ -514,20 +490,8 @@
         end
         number = get("https://api.transmitsms.com/format-number.json",format_number_input)
         if number["number"].include?("isValid")
-          params = {
-            "message" => input["message"],
-            "to" => number["number"]["international"]
-          }
-          if(input["virtual_number"].present?)
-            from = input["virtual_number"]
-          end
-          if(input["sender_id"].present?) 
-            from = input["sender_id"]
-          end
-          if(from.present?)
-            params["from"] = from
-          end
-          results = get("https://api.transmitsms.com/send-sms.json",params)
+          results = get("https://api.transmitsms.com/send-sms.json")
+            .params(message: input["message"], to:number["number"]["international"], from: input["virtual_number"] || input["sender_id"])
           results["mobile"] = number["number"]["international"]
           { results: results }
         end
@@ -543,20 +507,8 @@
         object_definitions['send_sms_list_request']
       },
       execute: ->(connection, input) {
-        params = {
-          "message" => input["message"],
-          "list_id" => input["list_id"]
-        }
-        if(input["virtual_number"].present?)
-          from = input["virtual_number"]
-        end
-        if(input["sender_id"].present?) 
-          from = input["sender_id"]
-        end
-        if(from.present?)
-          params["from"] = from
-        end
-        results = get("https://api.transmitsms.com/send-sms.json",params)
+        results = get("https://api.transmitsms.com/send-sms.json")
+          .params(message: input["message"], list_id: input["list_id"], from: input["virtual_number"] || input["sender_id"])
         { results: results }
       },
 
@@ -619,13 +571,13 @@
     },
     GetContact: {
       title: 'Get Contact',
-      description: "Get contact information from a list.",
+      description: "Get contact information from a list",
       config_fields:[
         { 
           name: "list_id", 
           control_type: "select", 
           pick_list: "contactList",
-          label: "List that the contact is in.",
+          label: "List that the contact is in",
           optional: false
         }
       ],
@@ -633,7 +585,7 @@
         [
           {
             name: 'msisdn',
-            type: 'mobile',
+            type: "integer",
             control_type: "phone",
             label: "Recipient Mobile Number",
             optional: false
@@ -652,7 +604,8 @@
   triggers: {
     new_message: {
       title: "Message received",
-      description: "Message received to virtual number",
+      description: "New <span class='provider'>message</span> received to virtual number <span class='provider'>transmitsms.com</span>",
+      help: "Fetches new incoming messages to a specified virtual number",
       input_fields: ->() {
         [
           { 
@@ -660,9 +613,8 @@
             control_type: "select", 
             pick_list: "numbers",
             label: "Virtual Number",
-            hint: "Can be purchased in the NUMBERS section of your transmitsms.com account",
-            optional: false
-          },
+            hint: "Can be purchased in the NUMBERS section of your transmitsms.com account"
+          }
         ]
       },
       type: :paging_desc,
@@ -677,7 +629,7 @@
         # work in progress will be delivered in later phases
       end,
       dedup: ->(messages) {
-        Time.now
+        messages["response_id"]
       },
       output_fields: ->(object_definitions){
         object_definitions["sms_notification"]
@@ -685,7 +637,7 @@
     },
     new_contact: {
       title: "New contact",
-      description: "New contact added to transmitsms.com list",
+      description: "New <span class='provider'>contact</span> added to <span class='provider'>transmitsms.com</span> list",
       config_fields:[
         { 
         name: "list_id", 
@@ -717,14 +669,14 @@
     },
     GetSMSResponse: {
       title: 'SMS Received to Inbox',
-      description: "Triggers when any new messages are found in your SMS Inbox.",
+      description: "New <span class='provider'>SMS</span> received to inbox in <span class='provider'>transmitsms.com</span>",
+      help: "Fetches new messages to inbox for all virtual numbers in the user's account.",
       poll: ->(connection, input) { 
         response = get("https://frontapi.transmitsms.com/zapier/get-responses.json")
           .params(page: 1, max: 10)
         {
           events: response["responses"],
-          next_poll: Time.now + 600,
-          can_poll_more: true
+          can_poll_more: false
         }
       },
       dedup: lambda do |response|
@@ -752,6 +704,15 @@
       if(cl["lists"].present?)
         cl["lists"].map { |contact| [contact["name"], contact["id"]] }
       end
+    },
+    countryList:->(connection) {
+      [
+        ["Australia", "AU"],
+        ["New Zealand", "NZ"],
+        ["United Kingdom", "GB"],
+        ["United States", "US"],
+        ["Singapore", "SG"]
+      ]
     }
   }
 }
