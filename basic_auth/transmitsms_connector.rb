@@ -673,9 +673,9 @@
       help: "Fetches new messages to inbox for all virtual numbers in the user's account.",
       poll: ->(connection, input, page) { 
         if(page.present?)
-          page++
+          page=+1
         else
-          page = 1;
+          page = 1
         end
         response = get("https://frontapi.transmitsms.com/zapier/get-responses.json")
           .params(page: page, max: 10)
